@@ -9,6 +9,10 @@ class Machine extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'install_date' => 'date',
+    ];
+
     protected $fillable = [
     'machine_number',
     'name',
