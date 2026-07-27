@@ -54,7 +54,7 @@ class WorkOrderController extends Controller
             'description' => $request->validated('description'),
             'assigned_to' => $request->validated('assigned_to'),
             'created_by' => $request->validated('created_by'),
-            'status' => $request->validated('status') ?? 'Assigned',
+            'status' => $request->validated('status') ?? 'New',
             'priority' => $request->validated('priority'),
             'notes' => $request->validated('notes'),
             'fault_report_id' => $request->validated('fault_report_id'),
@@ -83,6 +83,11 @@ class WorkOrderController extends Controller
         $previousStatus = $workOrder->status;
         $previousAssignee = $workOrder->assigned_to;
 
+        // Handle re-opening a closed work order
+        if ($previousStatus === 'Close' && ($data['status'] ?? '') === 'Inprogress') {
+            // Authorization is handled in UpdateWorkOrderRequest
+        }
+
         if (isset($data['machine_number'])) {
             $machine = Machine::query()
                 ->where('machine_number', $data['machine_number'])
@@ -102,7 +107,7 @@ class WorkOrderController extends Controller
             );
         }
 
-        if (($data['status'] ?? null) === 'Work Completed' && $previousStatus !== 'Work Completed') {
+        if (($data['status'] ?? null) === 'Finished' && $previousStatus !== 'Finished') {
             $this->notifications->createForUser(
                 'u1',
                 "Work Order {$updated->work_order_number} has been marked complete. Please verify and approve.",
@@ -110,11 +115,59 @@ class WorkOrderController extends Controller
             );
         }
 
-        if (($data['status'] ?? null) === 'Verified & Closed' && $previousStatus !== 'Verified & Closed') {
+        if (($data['status'] ?? null) === 'Verified' && $previousStatus !== 'Verified') {
             $this->ensureRepairRecord($updated);
         }
 
         return response()->json($updated);
+    }
+
+    public function checkIn(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        $user = $request->user();
+
+        if (in_array($workOrder->status, ['Close', 'Verified', 'Finished'])) {
+            return response()->json(['message' => 'Cannot check in to a work order that is closed, verified, or finished.'], Response::HTTP_FORBIDDEN);
+        }
+
+        // Check if another technician is already checked into this machine
+        $existingSession = WorkOrder::query()
+            ->where('machine_id', $workOrder->machine_id)
+            ->whereNotNull('active_technician_id')
+            ->where('id', '!=', $workOrder->id)
+            ->first();
+
+        if ($existingSession) {
+            return response()->json(['message' => "Machine is already being worked on by another technician under WO #{$existingSession->work_order_number}."], Response::HTTP_CONFLICT);
+        }
+        
+        if ($workOrder->active_technician_id !== null && $workOrder->active_technician_id !== $user->user_code) {
+            return response()->json(['message' => "Another technician is already checked in to this work order."], Response::HTTP_CONFLICT);
+        }
+
+
+        $workOrder->update([
+            'active_technician_id' => $user->user_code,
+            'checked_in_at' => now(),
+        ]);
+
+        return response()->json($workOrder);
+    }
+
+    public function checkOut(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($workOrder->active_technician_id !== $user->user_code) {
+            return response()->json(['message' => 'You are not checked in to this work order.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $workOrder->update([
+            'active_technician_id' => null,
+            'checked_in_at' => null,
+        ]);
+
+        return response()->json($workOrder);
     }
 
     public function destroy(WorkOrder $workOrder): Response

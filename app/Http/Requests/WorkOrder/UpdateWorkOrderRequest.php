@@ -27,9 +27,9 @@ class UpdateWorkOrderRequest extends FormRequest
 
         if ($this->has('status')) {
             $nextStatus = (string) $this->input('status');
-            if (in_array($nextStatus, ['Verified & Closed', 'Cancelled'], true)) {
+            if (in_array($nextStatus, ['Verified', 'Close'], true)) {
                 return $this->authorizePermission('workorders.verify_close')
-                    || ($nextStatus === 'Cancelled' && $this->authorizePermission('workorders.cancel'));
+                    || ($nextStatus === 'Close' && $this->authorizePermission('workorders.cancel'));
             }
 
             if ($statusOnly || $notesOnly || count($payloadKeys) <= 2) {
@@ -64,13 +64,11 @@ class UpdateWorkOrderRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'assigned_to' => ['sometimes', 'required', 'string', 'max:50'],
             'status' => ['sometimes', 'required', 'string', Rule::in([
-                'Assigned',
-                'Technician En Route',
-                'Technician Arrived',
-                'Work In Progress',
-                'Work Completed',
-                'Verified & Closed',
-                'Cancelled',
+                'New',
+                'Inprogress',
+                'Close',
+                'Verified',
+                'Finished',
             ])],
             'priority' => ['sometimes', 'required', 'string', Rule::in(['Low', 'Medium', 'High'])],
             'notes' => ['nullable', 'string'],

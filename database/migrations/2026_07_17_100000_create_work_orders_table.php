@@ -16,7 +16,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('assigned_to');
             $table->string('created_by');
-            $table->string('status')->default('Assigned');
+            $table->string('status')->default('New');
             $table->string('priority')->default('Medium');
             $table->text('notes')->nullable();
             $table->string('fault_report_id')->nullable();

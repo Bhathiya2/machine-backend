@@ -20,6 +20,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('machines', MachineController::class);
     Route::apiResource('work-orders', WorkOrderController::class);
+    Route::post('work-orders/{work_order}/check-in', [WorkOrderController::class, 'checkIn']);
+    Route::post('work-orders/{work_order}/check-out', [WorkOrderController::class, 'checkOut']);
     Route::apiResource('technicians', TechnicianController::class);
     Route::apiResource('users', UserController::class);
     Route::apiResource('roles', RoleController::class);

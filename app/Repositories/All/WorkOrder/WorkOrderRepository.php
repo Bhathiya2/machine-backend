@@ -18,7 +18,7 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
     {
         $query = $this->model->newQuery()->with('machine')
             // Active WOs first; Verified & Closed / Cancelled sink to the bottom
-            ->orderByRaw("CASE WHEN status IN ('Verified & Closed', 'Cancelled') THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN status IN ('Verified', 'Close') THEN 1 ELSE 0 END")
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at');
 

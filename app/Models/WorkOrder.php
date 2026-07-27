@@ -19,6 +19,8 @@ class WorkOrder extends Model
         'notes',
         'fault_report_id',
         'cost_entries',
+        'active_technician_id',
+        'checked_in_at',
     ];
 
     protected $casts = [
