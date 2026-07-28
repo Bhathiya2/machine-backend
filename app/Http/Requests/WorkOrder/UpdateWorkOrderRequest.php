@@ -27,7 +27,12 @@ class UpdateWorkOrderRequest extends FormRequest
 
         if ($this->has('status')) {
             $nextStatus = (string) $this->input('status');
-            if (in_array($nextStatus, ['Verified', 'Close'], true)) {
+
+            if ($nextStatus === 'Verified') {
+                return $this->authorizePermission('workorders.verify_close');
+            }
+
+            if (in_array($nextStatus, ['Close'], true)) {
                 return $this->authorizePermission('workorders.verify_close')
                     || ($nextStatus === 'Close' && $this->authorizePermission('workorders.cancel'));
             }
