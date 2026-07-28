@@ -22,6 +22,18 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at');
 
+        if (! empty($filters['current_user'])) {
+            $user = $filters['current_user'];
+
+            $isSupervisor = $user instanceof \App\Models\User
+                ? $user->hasAnyPermission(['workorders.create', 'workorders.update', 'workorders.verify_close', 'workorders.delete'])
+                : false;
+
+            if (! $isSupervisor && ! $this->isSuperAdminLike($user)) {
+                $query->where('assigned_to', $user->user_code ?? $user->id ?? '');
+            }
+        }
+
         if (! empty($filters['status']) && $filters['status'] !== 'All') {
             $query->where('status', $filters['status']);
         }
@@ -58,6 +70,19 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
     public function findWithMachine(int $id): ?WorkOrder
     {
         return $this->model->newQuery()->with('machine')->find($id);
+    }
+
+    private function isSuperAdminLike($user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user instanceof \App\Models\User) {
+            return $user->hasPermission('workorders.create') || $user->hasPermission('workorders.update') || $user->hasPermission('workorders.verify_close');
+        }
+
+        return false;
     }
 
     public function createForMachine(Machine $machine, array $data): WorkOrder

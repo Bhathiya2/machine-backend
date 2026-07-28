@@ -30,16 +30,17 @@ class WorkOrderController extends Controller
     {
         $this->authorizePermission('workorders.view');
 
-        return response()->json(
-            $this->workOrders->getFiltered($request->only([
-                'status',
-                'assigned_to',
-                'machine_number',
-                'from',
-                'to',
-                'search',
-            ]))
-        );
+        $filters = $request->only([
+            'status',
+            'assigned_to',
+            'machine_number',
+            'from',
+            'to',
+            'search',
+        ]);
+        $filters['current_user'] = $request->user();
+
+        return response()->json($this->workOrders->getFiltered($filters));
     }
 
     public function store(StoreWorkOrderRequest $request): JsonResponse
