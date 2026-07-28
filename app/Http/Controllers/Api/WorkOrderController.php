@@ -9,6 +9,7 @@ use App\Http\Requests\WorkOrder\UpdateWorkOrderRequest;
 use App\Models\Machine;
 use App\Models\RepairRecord;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderCheckInSession;
 use App\Repositories\All\Notification\NotificationRepositoryInterface;
 use App\Repositories\All\RepairRecord\RepairRecordRepositoryInterface;
 use App\Repositories\All\WorkOrder\WorkOrderRepositoryInterface;
@@ -147,9 +148,18 @@ class WorkOrderController extends Controller
         }
 
 
+        $checkedInAt = now();
+
         $workOrder->update([
             'active_technician_id' => $user->user_code,
-            'checked_in_at' => now(),
+            'checked_in_at' => $checkedInAt,
+        ]);
+
+        WorkOrderCheckInSession::query()->create([
+            'work_order_id' => $workOrder->id,
+            'technician_id' => $user->user_code,
+            'checked_in_at' => $checkedInAt,
+            'checked_out_at' => null,
         ]);
 
         return response()->json($workOrder);
@@ -163,10 +173,24 @@ class WorkOrderController extends Controller
             return response()->json(['message' => 'You are not checked in to this work order.'], Response::HTTP_FORBIDDEN);
         }
 
+        $checkedOutAt = now();
+
         $workOrder->update([
             'active_technician_id' => null,
             'checked_in_at' => null,
         ]);
+
+        $session = WorkOrderCheckInSession::query()
+            ->where('work_order_id', $workOrder->id)
+            ->whereNull('checked_out_at')
+            ->latest('checked_in_at')
+            ->first();
+
+        if ($session) {
+            $session->update([
+                'checked_out_at' => $checkedOutAt,
+            ]);
+        }
 
         return response()->json($workOrder);
     }
