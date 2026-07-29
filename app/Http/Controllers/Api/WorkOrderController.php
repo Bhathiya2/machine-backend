@@ -203,6 +203,25 @@ class WorkOrderController extends Controller
         return response()->noContent();
     }
 
+    public function getCheckInSessions(WorkOrder $workOrder): JsonResponse
+    {
+        // Authorize only Super Admin to view this
+        // Assuming 'super_admin_only' permission exists or will be created
+        // For now, let's check the user's role directly if a specific permission isn't set up yet.
+        // This can be refined with a proper permission later.
+        if (auth()->user()->resolvedRoleName() !== 'Super Admin') {
+            return response()->json(['message' => 'Unauthorized to view check-in sessions.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $sessions = WorkOrderCheckInSession::query()
+            ->where('work_order_id', $workOrder->id)
+            ->with('technician') // Assuming a 'technician' relationship exists in WorkOrderCheckInSession model
+            ->orderBy('checked_in_at', 'asc')
+            ->get();
+
+        return response()->json($sessions);
+    }
+
     private function ensureRepairRecord(WorkOrder $workOrder): void
     {
         if ($this->repairs->findByWorkOrder($workOrder->work_order_number)) {

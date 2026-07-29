@@ -23,4 +23,9 @@ class WorkOrderCheckInSession extends Model
     {
         return $this->belongsTo(WorkOrder::class);
     }
+
+    public function technician(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'technician_id', 'user_code');
+    }
 }

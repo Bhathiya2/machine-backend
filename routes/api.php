@@ -33,4 +33,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::get('work-orders/{work_order}/check-in-sessions', [WorkOrderController::class, 'getCheckInSessions']);
 });
