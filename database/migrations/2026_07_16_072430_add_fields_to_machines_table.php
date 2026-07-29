@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-         Schema::table('machines', function (Blueprint $table) {
-        $table->string('name')->nullable();
-        $table->string('model')->nullable();
-        $table->string('site')->nullable();
+        Schema::table('machines', function (Blueprint $table) {
+            $table->string('name')->nullable();
+            $table->string('model')->nullable();
+            $table->string('site')->nullable();
             //
         });
     }
@@ -24,8 +24,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-         Schema::table('machines', function (Blueprint $table) {
-        $table->dropColumn(['name', 'model', 'site']);
+        Schema::table('machines', function (Blueprint $table) {
+            $table->dropColumn(['name', 'model', 'site']);
             //
         });
     }

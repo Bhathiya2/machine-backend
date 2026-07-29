@@ -2,8 +2,8 @@
 
 namespace App\Repositories\Base;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class BaseRepository implements EloquentRepositoryInterface
@@ -38,14 +38,20 @@ class BaseRepository implements EloquentRepositoryInterface
     public function update(mixed $id, array $data): bool
     {
         $record = $this->find($id);
-        if (! $record) return false;
+        if (! $record) {
+            return false;
+        }
+
         return $record->update($data);
     }
 
     public function delete(mixed $id): bool
     {
         $record = $this->find($id);
-        if (! $record) return false;
+        if (! $record) {
+            return false;
+        }
+
         return $record->delete();
     }
 }

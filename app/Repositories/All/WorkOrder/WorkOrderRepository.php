@@ -3,6 +3,7 @@
 namespace App\Repositories\All\WorkOrder;
 
 use App\Models\Machine;
+use App\Models\User;
 use App\Models\WorkOrder;
 use App\Repositories\Base\BaseRepository;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,12 +26,18 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
         if (! empty($filters['current_user'])) {
             $user = $filters['current_user'];
 
-            $isSupervisor = $user instanceof \App\Models\User
-                ? $user->hasAnyPermission(['workorders.create', 'workorders.update', 'workorders.verify_close', 'workorders.delete'])
-                : false;
-
-            if (! $isSupervisor && ! $this->isSuperAdminLike($user)) {
+            // If the user is a Technician, they should only see their own work orders.
+            if ($user instanceof User && $user->resolvedRoleName() === 'Technician') {
                 $query->where('assigned_to', $user->user_code ?? $user->id ?? '');
+            } else {
+                // For other roles, apply the existing supervisor/admin logic.
+                $isSupervisor = $user instanceof User
+                    ? $user->hasAnyPermission(['workorders.create', 'workorders.update', 'workorders.verify_close', 'workorders.delete'])
+                    : false;
+
+                if (! $isSupervisor && ! $this->isSuperAdminLike($user)) {
+                    $query->where('assigned_to', $user->user_code ?? $user->id ?? '');
+                }
             }
         }
 
@@ -78,7 +85,7 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
             return false;
         }
 
-        if ($user instanceof \App\Models\User) {
+        if ($user instanceof User) {
             return $user->hasPermission('workorders.create') || $user->hasPermission('workorders.update') || $user->hasPermission('workorders.verify_close');
         }
 

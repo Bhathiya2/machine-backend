@@ -28,6 +28,7 @@ class RoleSeeder extends Seeder
 
             if ($isSuperAdmin) {
                 $role->permissions()->sync($allPermissions->values()->all());
+
                 continue;
             }
 

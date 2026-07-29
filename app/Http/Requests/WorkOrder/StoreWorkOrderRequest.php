@@ -3,7 +3,6 @@
 namespace App\Http\Requests\WorkOrder;
 
 use App\Http\Requests\Concerns\AuthorizesPermissions;
-use App\Models\WorkOrder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

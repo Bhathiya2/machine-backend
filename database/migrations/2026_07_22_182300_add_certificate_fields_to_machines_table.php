@@ -55,7 +55,7 @@ return new class extends Migration
                 'client_date_of_manufacture', 'tech_freq', 'tech_voltage', 'tech_amp',
                 'tech_total_mc_power', 'tech_ups', 'tech_chiller_cooling_system',
                 'tech_chiller_absorbed_power', 'tech_smoke_extractor', 'tech_room_temp',
-                'sign_completed', 'sign_incompleted', 'sign_signed_by', 'sign_technician_signature', 'sign_date'
+                'sign_completed', 'sign_incompleted', 'sign_signed_by', 'sign_technician_signature', 'sign_date',
             ]);
         });
     }

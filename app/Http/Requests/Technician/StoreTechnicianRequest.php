@@ -4,7 +4,6 @@ namespace App\Http\Requests\Technician;
 
 use App\Http\Requests\Concerns\AuthorizesPermissions;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreTechnicianRequest extends FormRequest
 {

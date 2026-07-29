@@ -142,11 +142,10 @@ class WorkOrderController extends Controller
         if ($existingSession) {
             return response()->json(['message' => "Machine is already being worked on by another technician under WO #{$existingSession->work_order_number}."], Response::HTTP_CONFLICT);
         }
-        
-        if ($workOrder->active_technician_id !== null && $workOrder->active_technician_id !== $user->user_code) {
-            return response()->json(['message' => "Another technician is already checked in to this work order."], Response::HTTP_CONFLICT);
-        }
 
+        if ($workOrder->active_technician_id !== null && $workOrder->active_technician_id !== $user->user_code) {
+            return response()->json(['message' => 'Another technician is already checked in to this work order.'], Response::HTTP_CONFLICT);
+        }
 
         $checkedInAt = now();
 

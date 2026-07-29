@@ -4,7 +4,6 @@ namespace App\Http\Requests\Role;
 
 use App\Http\Requests\Concerns\AuthorizesPermissions;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreRoleRequest extends FormRequest
 {
