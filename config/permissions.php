@@ -65,7 +65,7 @@ return [
         ],
         'Technician' => [
             'dashboard.view', 'machines.view', 'workorders.view',
-            'workorders.update_status', 'workorders.update_notes',
+            'workorders.update_status', 'workorders.update_notes', 'workorders.cancel',
             'faults.view', 'faults.report', 'repairs.view', 'notifications.view',
         ],
         'Worker' => [
