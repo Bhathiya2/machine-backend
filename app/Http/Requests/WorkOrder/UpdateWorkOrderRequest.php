@@ -36,8 +36,8 @@ class UpdateWorkOrderRequest extends FormRequest
                 return $user->resolvedRoleName() === 'Super Admin';
             }
 
-            if ($nextStatus === 'Verified') {
-                return $this->authorizePermission('workorders.verify_close');
+            if ($nextStatus === 'Verified' || $nextStatus === 'Finished') {
+                return $user->resolvedRoleName() === 'Super Admin';
             }
 
             if (in_array($nextStatus, ['Close'], true)) {
