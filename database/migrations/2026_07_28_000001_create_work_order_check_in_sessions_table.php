@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('work_order_id')->constrained('work_orders')->cascadeOnDelete();
             $table->string('technician_id');
-            $table->timestamp('checked_in_at');
+            $table->timestamp('checked_in_at')->nullable();
             $table->timestamp('checked_out_at')->nullable();
             $table->timestamps();
         });
