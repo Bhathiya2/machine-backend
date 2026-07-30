@@ -21,6 +21,11 @@ class UpdateWorkOrderRequest extends FormRequest
         /** @var WorkOrder|null $workOrder */
         $workOrder = $this->route('work_order');
 
+        // Block all edits to finished work orders
+        if ($workOrder && $workOrder->status === 'Finished') {
+            return false;
+        }
+
         $payloadKeys = array_keys($this->all());
         $statusOnly = $payloadKeys === ['status'] || ($payloadKeys === ['status', 'notes'] && $this->has('status'));
         $notesOnly = $payloadKeys === ['notes'];
