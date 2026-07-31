@@ -37,4 +37,9 @@ class WorkOrder extends Model
     {
         return $this->hasMany(WorkOrderCheckInSession::class);
     }
+
+    public function technicianNotes(): HasMany
+    {
+        return $this->hasMany(TechnicianNote::class)->latest();
+    }
 }

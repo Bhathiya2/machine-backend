@@ -76,7 +76,7 @@ class WorkOrderController extends Controller
     {
         $this->authorizePermission('workorders.view');
 
-        return response()->json($workOrder->load('machine'));
+        return response()->json($workOrder->load(['machine', 'technicianNotes.user']));
     }
 
     public function update(UpdateWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
@@ -192,6 +192,28 @@ class WorkOrderController extends Controller
         }
 
         return response()->json($workOrder);
+    }
+
+    
+    public function addTechnicianNotes(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        $user = $request->user();
+
+        // Authorize: only assigned technician or super admin can add notes.
+        if ($user->user_code !== $workOrder->assigned_to && !$user->isSuperAdmin()) {
+            return response()->json(['message' => 'You are not authorized to add notes to this work order.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $validated = $request->validate([
+            'notes' => 'required|string',
+        ]);
+
+        $workOrder->technicianNotes()->create([
+            'user_id' => $user->id,
+            'note' => $validated['notes'],
+        ]);
+
+        return response()->json($workOrder->load('technicianNotes.user'));
     }
 
     public function destroy(WorkOrder $workOrder): Response

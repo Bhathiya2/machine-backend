@@ -85,7 +85,7 @@ class User extends Authenticatable
         return $permissions === ['*'] ? Permission::query()->pluck('name')->all() : $permissions;
     }
 
-    private function isSuperAdmin(): bool
+    public function isSuperAdmin(): bool
     {
         if ($this->assignedRole?->is_super_admin) {
             return true;
@@ -100,5 +100,10 @@ class User extends Authenticatable
             'superadmin@example.com',
             'admin@example.com',
         ], true);
+    }
+
+    public function technicianNotes(): HasMany
+    {
+        return $this->hasMany(TechnicianNote::class);
     }
 }

@@ -17,7 +17,7 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
 
     public function getFiltered(array $filters = []): Collection
     {
-        $query = $this->model->newQuery()->with('machine')
+        $query = $this->model->newQuery()->with(['machine', 'technicianNotes.user'])
             // Active WOs first; Verified & Closed / Cancelled sink to the bottom
             ->orderByRaw("CASE WHEN status IN ('Verified', 'Close') THEN 1 ELSE 0 END")
             ->orderByDesc('updated_at')
