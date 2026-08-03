@@ -47,4 +47,9 @@ class WorkOrder extends Model
     {
         return $this->hasMany(WorkOrderActivity::class)->latest();
     }
+
+    public function financeEntries(): HasMany
+    {
+        return $this->hasMany(FinanceEntry::class)->latest('entry_date');
+    }
 }

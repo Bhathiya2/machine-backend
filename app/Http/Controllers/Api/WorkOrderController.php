@@ -6,6 +6,7 @@ use App\Http\Concerns\AuthorizesApiPermissions;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\WorkOrder\StoreWorkOrderRequest;
 use App\Http\Requests\WorkOrder\UpdateWorkOrderRequest;
+use App\Models\FinanceEntry;
 use App\Models\Machine;
 use App\Models\RepairRecord;
 use App\Models\User;
@@ -65,6 +66,8 @@ class WorkOrderController extends Controller
             'fault_report_id' => $request->validated('fault_report_id'),
             'cost_entries' => $request->validated('cost_entries') ?? [],
         ]);
+
+        $this->syncFinanceEntries($workOrder, $workOrder->cost_entries ?? [], $user);
 
         $this->notifications->createForUser(
             $workOrder->assigned_to,
@@ -129,6 +132,9 @@ class WorkOrderController extends Controller
         }
 
         $updated = $this->workOrders->updateWorkOrder($workOrder, $data);
+        if (array_key_exists('cost_entries', $data)) {
+            $this->syncFinanceEntries($updated, $updated->cost_entries ?? [], $user);
+        }
 
         $changes = $this->buildWorkOrderChangeLog($previousValues, $updated, $data, $previousMachine);
         if (! empty($changes)) {
@@ -346,6 +352,53 @@ class WorkOrderController extends Controller
             'summary' => $summary,
             'changes' => $changes ?: null,
         ]);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $entries
+     */
+    private function syncFinanceEntries(WorkOrder $workOrder, array $entries, ?User $user = null): void
+    {
+        FinanceEntry::query()
+            ->where('work_order_id', $workOrder->id)
+            ->delete();
+
+        foreach ($this->normalizeFinanceEntries($entries) as $entry) {
+            FinanceEntry::query()->create([
+                'work_order_id' => $workOrder->id,
+                'work_order_number' => $workOrder->work_order_number,
+                'machine_id' => $workOrder->machine_id,
+                'category' => $entry['category'],
+                'quantity' => $entry['quantity'],
+                'unit_price' => $entry['unit_price'],
+                'amount' => $entry['amount'],
+                'details' => $entry['details'],
+                'entry_date' => $entry['date'],
+                'recorded_by' => $user?->user_code ?? $workOrder->created_by,
+            ]);
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $entries
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeFinanceEntries(array $entries): array
+    {
+        return array_values(array_filter(array_map(function (array $entry): array {
+            $quantity = (float) ($entry['quantity'] ?? 0);
+            $unitPrice = (float) ($entry['unitPrice'] ?? $entry['unit_price'] ?? 0);
+            $amount = (float) ($entry['amount'] ?? ($quantity * $unitPrice));
+
+            return [
+                'category' => (string) ($entry['category'] ?? 'Others'),
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'amount' => $amount,
+                'details' => isset($entry['details']) ? trim((string) $entry['details']) : null,
+                'date' => (string) ($entry['date'] ?? now()->toDateString()),
+            ];
+        }, $entries), fn (array $entry): bool => $entry['amount'] >= 0));
     }
 
     /**
