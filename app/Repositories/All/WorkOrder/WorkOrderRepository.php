@@ -17,7 +17,7 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
 
     public function getFiltered(array $filters = []): Collection
     {
-        $query = $this->model->newQuery()->with(['machine', 'technicianNotes.user'])
+        $query = $this->model->newQuery()->with(['machine', 'technicianNotes.user', 'activities.user'])
             // Active WOs first; Verified & Closed / Cancelled sink to the bottom
             ->orderByRaw("CASE WHEN status IN ('Verified', 'Close') THEN 1 ELSE 0 END")
             ->orderByDesc('updated_at')
@@ -76,7 +76,7 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
 
     public function findWithMachine(int $id): ?WorkOrder
     {
-        return $this->model->newQuery()->with('machine')->find($id);
+        return $this->model->newQuery()->with(['machine', 'technicianNotes.user', 'activities.user'])->find($id);
     }
 
     private function isSuperAdminLike($user): bool
@@ -99,14 +99,14 @@ class WorkOrderRepository extends BaseRepository implements WorkOrderRepositoryI
             'machine_id' => $machine->id,
         ]);
 
-        return $workOrder->load('machine');
+        return $workOrder->load(['machine', 'technicianNotes.user', 'activities.user']);
     }
 
     public function updateWorkOrder(WorkOrder $workOrder, array $data): WorkOrder
     {
         $workOrder->update($data);
 
-        return $workOrder->fresh()->load('machine');
+        return $workOrder->fresh()->load(['machine', 'technicianNotes.user', 'activities.user']);
     }
 
     public function deleteWorkOrder(WorkOrder $workOrder): bool

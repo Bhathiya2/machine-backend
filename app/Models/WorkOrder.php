@@ -42,4 +42,9 @@ class WorkOrder extends Model
     {
         return $this->hasMany(TechnicianNote::class)->latest();
     }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(WorkOrderActivity::class)->latest();
+    }
 }

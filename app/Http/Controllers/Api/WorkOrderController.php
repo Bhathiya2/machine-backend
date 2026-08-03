@@ -8,6 +8,8 @@ use App\Http\Requests\WorkOrder\StoreWorkOrderRequest;
 use App\Http\Requests\WorkOrder\UpdateWorkOrderRequest;
 use App\Models\Machine;
 use App\Models\RepairRecord;
+use App\Models\User;
+use App\Models\WorkOrderActivity;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderCheckInSession;
 use App\Repositories\All\Notification\NotificationRepositoryInterface;
@@ -46,6 +48,7 @@ class WorkOrderController extends Controller
 
     public function store(StoreWorkOrderRequest $request): JsonResponse
     {
+        $user = $request->user();
         $machine = Machine::query()
             ->where('machine_number', $request->validated('machine_number'))
             ->firstOrFail();
@@ -69,21 +72,48 @@ class WorkOrderController extends Controller
             $workOrder->work_order_number
         );
 
-        return response()->json($workOrder, Response::HTTP_CREATED);
+        $this->recordActivity(
+            $workOrder,
+            $user,
+            'created',
+            "Created work order {$workOrder->work_order_number}",
+            [
+                'title' => $workOrder->title,
+                'machine' => $machine->machine_number,
+                'assigned_to' => $workOrder->assigned_to,
+                'status' => $workOrder->status,
+                'priority' => $workOrder->priority,
+            ]
+        );
+
+        return response()->json($workOrder->load(['machine', 'technicianNotes.user', 'activities.user']), Response::HTTP_CREATED);
     }
 
     public function show(WorkOrder $workOrder): JsonResponse
     {
         $this->authorizePermission('workorders.view');
 
-        return response()->json($workOrder->load(['machine', 'technicianNotes.user']));
+        return response()->json($workOrder->load(['machine', 'technicianNotes.user', 'activities.user']));
     }
 
     public function update(UpdateWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
     {
+        $user = $request->user();
         $data = $request->validated();
         $previousStatus = $workOrder->status;
         $previousAssignee = $workOrder->assigned_to;
+        $previousMachine = $workOrder->loadMissing('machine')->machine?->machine_number ?? (string) $workOrder->machine_id;
+        $previousValues = $workOrder->only([
+            'machine_id',
+            'title',
+            'description',
+            'assigned_to',
+            'status',
+            'priority',
+            'notes',
+            'fault_report_id',
+            'cost_entries',
+        ]);
 
         // Handle re-opening a closed work order
         if ($previousStatus === 'Close' && ($data['status'] ?? '') === 'Inprogress') {
@@ -99,6 +129,17 @@ class WorkOrderController extends Controller
         }
 
         $updated = $this->workOrders->updateWorkOrder($workOrder, $data);
+
+        $changes = $this->buildWorkOrderChangeLog($previousValues, $updated, $data, $previousMachine);
+        if (! empty($changes)) {
+            $this->recordActivity(
+                $updated,
+                $user,
+                'updated',
+                "Updated work order {$updated->work_order_number}",
+                $changes
+            );
+        }
 
         if (isset($data['assigned_to']) && $data['assigned_to'] !== $previousAssignee) {
             $machineNumber = $updated->machine?->machine_number ?? '';
@@ -121,7 +162,7 @@ class WorkOrderController extends Controller
             $this->ensureRepairRecord($updated);
         }
 
-        return response()->json($updated);
+        return response()->json($updated->load(['machine', 'technicianNotes.user', 'activities.user']));
     }
 
     public function checkIn(Request $request, WorkOrder $workOrder): JsonResponse
@@ -161,7 +202,7 @@ class WorkOrderController extends Controller
             'checked_out_at' => null,
         ]);
 
-        return response()->json($workOrder);
+        return response()->json($workOrder->load(['machine', 'technicianNotes.user', 'activities.user']));
     }
 
     public function checkOut(Request $request, WorkOrder $workOrder): JsonResponse
@@ -191,7 +232,7 @@ class WorkOrderController extends Controller
             ]);
         }
 
-        return response()->json($workOrder);
+        return response()->json($workOrder->load(['machine', 'technicianNotes.user', 'activities.user']));
     }
 
     
@@ -213,7 +254,15 @@ class WorkOrderController extends Controller
             'note' => $validated['notes'],
         ]);
 
-        return response()->json($workOrder->load('technicianNotes.user'));
+        $this->recordActivity(
+            $workOrder,
+            $user,
+            'added_note',
+            "Added technician note to work order {$workOrder->work_order_number}",
+            ['note' => $validated['notes']]
+        );
+
+        return response()->json($workOrder->load(['machine', 'technicianNotes.user', 'activities.user']));
     }
 
     public function destroy(WorkOrder $workOrder): Response
@@ -283,5 +332,63 @@ class WorkOrderController extends Controller
             'technician_id' => $workOrder->assigned_to,
             'photos' => [],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $changes
+     */
+    private function recordActivity(WorkOrder $workOrder, ?User $user, string $action, string $summary, array $changes = []): void
+    {
+        WorkOrderActivity::query()->create([
+            'work_order_id' => $workOrder->id,
+            'user_id' => $user?->user_code ?? 'system',
+            'action' => $action,
+            'summary' => $summary,
+            'changes' => $changes ?: null,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function buildWorkOrderChangeLog(array $beforeValues, WorkOrder $after, array $data, string $previousMachineNumber): array
+    {
+        $changes = [];
+
+        if (array_key_exists('machine_id', $data)) {
+            $changes['machine'] = [
+                'from' => $previousMachineNumber,
+                'to' => $after->loadMissing('machine')->machine?->machine_number ?? $previousMachineNumber,
+            ];
+        }
+
+        foreach (['title', 'description', 'assigned_to', 'status', 'priority', 'notes', 'fault_report_id'] as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+
+            $beforeValue = $beforeValues[$field] ?? null;
+            $afterValue = $after->getAttribute($field);
+
+            if ((string) ($beforeValue ?? '') === (string) ($afterValue ?? '')) {
+                continue;
+            }
+
+            $changes[$field] = [
+                'from' => $beforeValue,
+                'to' => $afterValue,
+            ];
+        }
+
+        if (array_key_exists('cost_entries', $data)) {
+            $changes['cost_entries'] = [
+                'from_count' => count($beforeValues['cost_entries'] ?? []),
+                'to_count' => count($after->cost_entries ?? []),
+                'to_total' => collect($after->cost_entries ?? [])->sum('amount'),
+            ];
+        }
+
+        return $changes;
     }
 }
