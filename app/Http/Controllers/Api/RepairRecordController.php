@@ -10,6 +10,7 @@ use App\Models\Machine;
 use App\Models\RepairRecord;
 use App\Repositories\All\RepairRecord\RepairRecordRepositoryInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 class RepairRecordController extends Controller
@@ -40,6 +41,16 @@ class RepairRecordController extends Controller
         $labor = (float) ($request->validated('labor_cost') ?? 0);
         $total = $request->validated('total_cost');
 
+        $photos = collect($request->file('photos', []))->map(function ($photo) use ($request) {
+            $path = $photo->store('repair-records', 'public');
+            return [
+                'id' => (string) str()->uuid(),
+                'url' => Storage::disk('public')->url($path),
+                'type' => $request->validated('photo_type', 'after'),
+                'caption' => $photo->getClientOriginalName(),
+            ];
+        })->values()->all();
+
         $record = RepairRecord::query()->create([
             'repair_number' => $this->repairs->nextRepairNumber(),
             'work_order_number' => $request->validated('work_order_number'),
@@ -51,7 +62,7 @@ class RepairRecordController extends Controller
             'labor_cost' => $labor,
             'total_cost' => $total !== null ? (float) $total : $partsCost + $labor,
             'technician_id' => $request->validated('technician_id'),
-            'photos' => $request->validated('photos') ?? [],
+            'photos' => $photos,
         ])->load('machine');
 
         return response()->json($this->format($record), Response::HTTP_CREATED);
