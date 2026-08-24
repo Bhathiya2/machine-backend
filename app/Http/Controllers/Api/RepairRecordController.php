@@ -79,6 +79,20 @@ class RepairRecordController extends Controller
     {
         $data = $request->validated();
 
+        $newPhotos = collect($request->file('photos', []))->map(function ($photo) use ($request) {
+            $path = $photo->store('repair-records', 'public');
+            return [
+                'id' => (string) str()->uuid(),
+                'url' => Storage::disk('public')->url($path),
+                'type' => $request->validated('photo_type', 'after'),
+                'caption' => $photo->getClientOriginalName(),
+            ];
+        })->values()->all();
+
+        if ($newPhotos) {
+            $data['photos'] = array_merge($repairRecord->photos ?? [], $newPhotos);
+        }
+
         if (isset($data['parts_replaced']) || isset($data['labor_cost'])) {
             $parts = $data['parts_replaced'] ?? $repairRecord->parts_replaced ?? [];
             $partsCost = collect($parts)->sum(fn ($part) => (float) ($part['cost'] ?? 0));
