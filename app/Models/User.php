@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'user_code', 'role', 'role_id', 'site', 'phone'])]
+#[Fillable(['name', 'email', 'password', 'user_code', 'role', 'role_id', 'site', 'phone', 'push_token'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -102,8 +102,13 @@ class User extends Authenticatable
         ], true);
     }
 
-    public function technicianNotes(): HasMany
+       public function technicianNotes(): HasMany
     {
         return $this->hasMany(TechnicianNote::class);
+    }
+
+    public function routeNotificationForExpo(): ?string
+    {
+        return $this->push_token;
     }
 }
