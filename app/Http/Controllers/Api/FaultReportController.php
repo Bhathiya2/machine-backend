@@ -8,6 +8,8 @@ use App\Http\Requests\FaultReport\StoreFaultReportRequest;
 use App\Http\Requests\FaultReport\UpdateFaultReportRequest;
 use App\Models\FaultReport;
 use App\Models\Machine;
+use App\Models\User;
+use App\Notifications\NewFaultReported;
 use App\Repositories\All\FaultReport\FaultReportRepositoryInterface;
 use App\Repositories\All\Notification\NotificationRepositoryInterface;
 use Illuminate\Http\JsonResponse;
@@ -53,6 +55,8 @@ class FaultReportController extends Controller
             null
         );
 
+        $this->sendPushNotifications($fault);
+
         return response()->json($this->format($fault), Response::HTTP_CREATED);
     }
 
@@ -76,6 +80,21 @@ class FaultReportController extends Controller
         $faultReport->delete();
 
         return response()->noContent();
+    }
+
+    private function sendPushNotifications(FaultReport $fault): void
+    {
+        $recipients = User::query()
+            ->whereNotNull('push_token')
+            ->where(function ($query) {
+                $query->where('role', 'Owner')
+                    ->orWhere('role', 'Technician');
+            })
+            ->get();
+
+        foreach ($recipients as $user) {
+            $user->notify(new NewFaultReported($fault));
+        }
     }
 
     private function format(FaultReport $fault): array

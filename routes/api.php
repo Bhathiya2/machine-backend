@@ -17,6 +17,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/push-token', [AuthController::class, 'savePushToken']);
 
     Route::apiResource('machines', MachineController::class);
     Route::apiResource('work-orders', WorkOrderController::class);

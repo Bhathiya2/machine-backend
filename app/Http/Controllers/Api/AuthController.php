@@ -37,6 +37,18 @@ class AuthController extends Controller
         return response()->json($this->formatUser($user));
     }
 
+    public function savePushToken(Request $request): JsonResponse
+    {
+        $request->validate([
+            'push_token' => 'required|string',
+        ]);
+
+        $user = $request->user();
+        $user->update(['push_token' => $request->input('push_token')]);
+
+        return response()->json(['message' => 'Push token saved.']);
+    }
+
     public function logout(Request $request): Response
     {
         $request->user()->currentAccessToken()?->delete();
